@@ -17,7 +17,7 @@ local function addCreationButtons(x, y, settings)
     local add_button = SettingsCanvas:CreateChildWidget("button","add_button", 0, true)
     add_button:Show(true)
     add_button:AddAnchor("TOPLEFT", SettingsCanvas, x, y + 40)
-    add_button:SetText("Add")
+    add_button:SetText("Add/Change")
     api.Interface:ApplyButtonSkin(add_button, BUTTON_BASIC.DEFAULT)
     local remove_button = SettingsCanvas:CreateChildWidget("button","add_button", 0, true)
     remove_button:Show(true)
@@ -49,15 +49,21 @@ local function addCreationButtons(x, y, settings)
 --         Here it is
         local loadout = { name = selected_name, gear = items }
 
-        local title_id = api.Player:GetShowingAppellation()[1]
+		if api.Player:GetShowingAppellation() then
+			loadout.title_id = api.Player:GetShowingAppellation()[1]
+		else
+			loadout.title_id = 0
+		end
 
-        if title_id then
-            loadout.title_id = title_id
-        end
+		-- debug
+		--api.Log:Info(title_id)
+		--api.Log:Info(api.Player:GetShowingAppellation())
+
         local loadout_exists = false
         for i, v in ipairs(settings.gear_sets) do
             if v.name == selected_name then
                 settings.gear_sets[i] = loadout
+
                 loadout_exists = true
                 break
             end
