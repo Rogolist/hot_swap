@@ -1,34 +1,91 @@
 local api = require("api")
 local DISPLAY = require("hot_swap/display")
 local SETTINGS = require("hot_swap/settings")
+
+local dataFile = {}
+dataFile.Name = "hot_swap/gears.lua"
+
 local hot_swap = {
     name = "Hot Swap",
-    version = "0.5.0",
-    author = "MikeTheShadow",
+    version = "0.5.1",
+    author = "MikeTheShadow & Psejik",
     desc = "A plugin to hotswap gear and titles."
 }
-local function OnLoad()
-    local settings = api.GetSettings("hot_swap")
-    if settings.gear_sets == nil then
-        settings.gear_sets = {}
-        api.SaveSettings()
-    end
-    settings.show_creation_window = true
-    DISPLAY.CreateMainDisplay(settings)
-    SETTINGS.CreateSettingsWindow(settings)
+
+-- чтение из файла
+GetSavedItems = function(reverse)
+    if reverse == nil then reverse = false end
+    local savedData = api.File:Read(dataFile.Name)
+    return savedData or {}
 end
-hot_swap.OnLoad = OnLoad
+
+--[[
+local function GetSavedItems()
+    local savedData = api.File:Read(dataFileName)
+    return savedData or {}
+end
+]]
+
+--запись в файл массива
+SaveItems = function(gears) api.File:Write(dataFile.Name, gears) end
+
+local function OnLoad()
+	-- чтение данных из общих настроек
+    local settings = api.GetSettings("hot_swap")
+	
+	-- набор гиров берем из отдельного файла
+	dataFile.gear_sets = GetSavedItems()
+	--api.Log:Err(hot_swap.name .. " data loaded")
+	
+	-- сохранение пустого массива при запуске, если не было обнаружено старого
+    if dataFile.gear_sets == nil then
+        dataFile.gear_sets = {}
+        --api.SaveSettings()
+		SaveItems(dataFile.gear_sets)
+    end
+	
+    settings.show_creation_window = true
+    DISPLAY.CreateMainDisplay(settings, dataFile.gear_sets)
+    SETTINGS.CreateSettingsWindow(settings, dataFile.gear_sets)
+end
+
 local function OnUpdate()
     DISPLAY.Update()
 end
-api.On("UPDATE", OnUpdate)
+
 local function OnUnload()
     DISPLAY.Destroy()
     SETTINGS.Destroy()
 end
-hot_swap.OnUnload = OnUnload
+
 local function OnSettingToggle()
     SETTINGS.Toggle()
 end
+
+hot_swap.OnLoad = OnLoad
+api.On("UPDATE", OnUpdate)
+hot_swap.OnUnload = OnUnload
 hot_swap.OnSettingToggle = OnSettingToggle
+
 return hot_swap
+
+
+
+-- ################
+
+
+-- добавление в массив
+--[[
+    local savedData = UI.GetSavedItems()
+
+    local existingData = savedData[realIndex]
+	
+    if existingData then
+        for i = 1, #savedData do
+            if i == realIndex then savedData[i] = data end
+        end
+    else
+        table.insert(savedData, data)
+    end
+    hot_swap.SaveItems(savedData)
+]]

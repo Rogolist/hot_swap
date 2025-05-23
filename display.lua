@@ -64,6 +64,7 @@ function DISPLAY.createButton(Canvas, set, x, y, last_button, settings)
                     local item_in_bag = api.Bag:GetBagItemInfo(1, slot_num)
                     if item_in_bag ~= nil then
                         if item_in_bag.name == gear_item_needed.name and item_in_bag.itemGrade == gear_item_needed.grade then
+							-- добавление в массив в памяти
                             table.insert(gear_to_process, {
                                 gear_item = gear_item_needed,
                                 pos = slot_num
@@ -80,13 +81,17 @@ function DISPLAY.createButton(Canvas, set, x, y, last_button, settings)
     return button
 end
 local delay = 0
+-- не обнаружил вызова данной функции
+--[[
 function DISPLAY.CreateDisplays(settings)
     CreateMainDisplay(settings)
 end
-function DISPLAY.CreateMainDisplay(settings)
+]]
+-- создается с настройками, которые можно бы и подправить
+function DISPLAY.CreateMainDisplay(settings, _gear_sets)
     buttons = {}
     gear_to_process = {}
-    local gear_sets = settings.gear_sets
+    local gear_sets = _gear_sets
     local base_height = 35
     local canvas_x = settings.x or 100
     local canvas_y = settings.y or 0
@@ -125,6 +130,8 @@ function DISPLAY.CreateMainDisplay(settings)
     end
     Canvas:SetHandler("OnDragStop", Canvas.OnDragStop)
     Canvas:EnableDrag(true)
+	
+	-- кнопка сворачивания окна списка гиров ("+" и "-")
     local closeBtn = Canvas:CreateChildWidget("button", "hotSwap.closeBtn", 0, true)
     closeBtn:Show(true)
     closeBtn:AddAnchor("TOPRIGHT", Canvas, -10, 5)
@@ -147,7 +154,7 @@ function DISPLAY.CreateMainDisplay(settings)
             buttons[button_num]:Show(false)
         end
         Canvas:SetExtent(200, 35)
-        settings.hidden = true
+        settings.hidden = true	-- свернуто окно с выбором гира
         api.SaveSettings()
     end)
     showBtn:SetHandler("OnClick", function()
@@ -157,7 +164,14 @@ function DISPLAY.CreateMainDisplay(settings)
             buttons[button_num]:Show(true)
         end
         Canvas:SetExtent(200, base_height + (#buttons * 50))
-        settings.hidden = false
+        settings.hidden = false	-- разернуто окно с выбором гира
+		
+		DISPLAY.Destroy()
+		-- тут считаем заново файл
+		local rereaded_gear_sets = GetSavedItems()
+		gear_sets = rereaded_gear_sets
+		DISPLAY.CreateMainDisplay(settings, gear_sets)	-- !!!
+
         api.SaveSettings()
     end)
     local startX = 20
@@ -169,7 +183,9 @@ function DISPLAY.CreateMainDisplay(settings)
         offset = offset + 50
     end
 end
+-- обновление окна выбора сохраненных гиров
 function DISPLAY.Update()
+	-- gear_to_process - массив гиров в памяти
     if #gear_to_process > 0 then
         for button_pos = 1, #buttons do
             buttons[button_pos]:Enable(false)
@@ -191,6 +207,7 @@ function DISPLAY.Update()
         delay = delay + 1
     end
 end
+-- удаление окошка ввода и кнопок (для пересоздания)
 function DISPLAY.Destroy()
     for i = 1, #buttons do
         buttons[i]:Show(false)

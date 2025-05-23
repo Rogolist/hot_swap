@@ -1,3 +1,4 @@
+-- есть правки Psejik
 local DISPLAY = require("hot_swap/display")
 local SETTINGS = {}
 local SettingsCanvas
@@ -7,28 +8,35 @@ local function is_empty_or_whitespace(str)
     return str == nil or str:match("^%s*$") ~= nil
 end
 
-local function addCreationButtons(x, y, settings)
+local function addCreationButtons(x, y, settings, gear_sets)
+	-- поле ввода
     local name_input = W_CTRL.CreateEdit("nameEditbox", SettingsCanvas)
     name_input:AddAnchor("TOPLEFT", SettingsCanvas, x, y)
     name_input:SetExtent(150, 30)
     name_input:SetMaxTextLength(64)
     name_input:CreateGuideText("Enter Set Name")
     name_input:Show(true)
+	-- кнопка создания
     local add_button = SettingsCanvas:CreateChildWidget("button","add_button", 0, true)
     add_button:Show(true)
     add_button:AddAnchor("TOPLEFT", SettingsCanvas, x, y + 40)
     add_button:SetText("Add/Change")
     api.Interface:ApplyButtonSkin(add_button, BUTTON_BASIC.DEFAULT)
+	-- кнопка удаления
     local remove_button = SettingsCanvas:CreateChildWidget("button","add_button", 0, true)
     remove_button:Show(true)
     remove_button:AddAnchor("TOPLEFT", SettingsCanvas, x, y + 80)
     remove_button:SetText("Remove")
     api.Interface:ApplyButtonSkin(remove_button, BUTTON_BASIC.DEFAULT)
+	
+	-- скрытие кнопок настроек если окно настроек скрыто
     if settings.show_creation_window ~= true then
         name_input:Show(false)
         add_button:Show(false)
         remove_button:Show(false)
     end
+	
+	-- действие по кнопке создания
     add_button:SetHandler("OnClick", function()
         selected_name = name_input:GetText()
         if is_empty_or_whitespace(selected_name) then
@@ -49,41 +57,61 @@ local function addCreationButtons(x, y, settings)
 --         Here it is
         local loadout = { name = selected_name, gear = items }
 
+        -- local title_id = api.Player:GetShowingAppellation()[1]
+		
+		
+		-- проверка на наличие титула
 		if api.Player:GetShowingAppellation() then
 			loadout.title_id = api.Player:GetShowingAppellation()[1]
 		else
 			loadout.title_id = 0
 		end
-
-		-- debug
-		--api.Log:Info(title_id)
-		--api.Log:Info(api.Player:GetShowingAppellation())
-
+		
+		-- проверка на существование набора с тем же именем
         local loadout_exists = false
-        for i, v in ipairs(settings.gear_sets) do
+        for i, v in ipairs(gear_sets) do
             if v.name == selected_name then
-                settings.gear_sets[i] = loadout
-
+				--  и изменение в нем
+                gear_sets[i] = loadout
+				
+					-- local dataFileName = 'Navigate/data/items.lua'
+				
                 loadout_exists = true
                 break
             end
         end
+		
         if not loadout_exists then
-            table.insert(settings.gear_sets, loadout)
+            table.insert(gear_sets, loadout)
         end
-        api.SaveSettings()
+		
+        --api.SaveSettings()
+		SaveItems(gear_sets)
+		
+		
+		-- удаление окна...
         DISPLAY.Destroy()
-        DISPLAY.CreateMainDisplay(settings)
+        DISPLAY.CreateMainDisplay(settings, gear_sets)	-- !!!
         name_input:SetText("")
         name_input:CreateGuideText("Enter Set Name")
+
+		-- зактыть окно настроек при создании набора
+		SETTINGS.Toggle()
+		
     end)
+	
+	-- действие по кнопке удаления
     remove_button:SetHandler("OnClick", function()
-        for i = 1, #settings.gear_sets do
-            if settings.gear_sets[i].name == name_input:GetText() then
-                table.remove(settings.gear_sets, i)
-                api.SaveSettings()
+        for i = 1, #gear_sets do
+            if gear_sets[i].name == name_input:GetText() then
+                table.remove(gear_sets, i)
+                --api.SaveSettings()
+				SaveItems(gear_sets)
                 DISPLAY.Destroy()
-                DISPLAY.CreateMainDisplay(settings)
+                DISPLAY.CreateMainDisplay(settings, gear_sets)	-- !!!
+				
+				-- зактыть окно настроек при удалении набора
+				SETTINGS.Toggle()
                 break
             end
         end
@@ -92,8 +120,11 @@ local function addCreationButtons(x, y, settings)
     end)
 end
 
-function SETTINGS.CreateSettingsWindow(settings)
-    local canvas_x = settings.settings_x or 500
+-- создается с настройками, которые считываются только при загрузке
+function SETTINGS.CreateSettingsWindow(settings, gear_sets)
+	local _cou = 200 --500
+
+    local canvas_x = settings.settings_x or _cou
     local canvas_y = settings.settings_y or 0
     SettingsCanvas = api.Interface:CreateEmptyWindow("hotSwapWindow", "UIParent")
     SettingsCanvas.bg = SettingsCanvas:CreateNinePartDrawable(TEXTURE_PATH.HUD, "background")
@@ -101,8 +132,8 @@ function SETTINGS.CreateSettingsWindow(settings)
     SettingsCanvas.bg:SetColor(0, 0, 0, 0.5)
     SettingsCanvas.bg:AddAnchor("TOPLEFT", SettingsCanvas, 0, 0)
     SettingsCanvas.bg:AddAnchor("BOTTOMRIGHT", SettingsCanvas, 0, 0)
-    SettingsCanvas:SetExtent(500,500)
-    if canvas_x ~= 500 and canvas_y ~= 0 then
+    SettingsCanvas:SetExtent(_cou,_cou)
+    if canvas_x ~= _cou and canvas_y ~= 0 then
         SettingsCanvas:AddAnchor("TOPLEFT", "UIParent", canvas_x, canvas_y)
     else
         SettingsCanvas:AddAnchor("LEFT", "UIParent", canvas_x, canvas_y)
@@ -126,9 +157,10 @@ function SETTINGS.CreateSettingsWindow(settings)
     SettingsCanvas:SetHandler("OnDragStop", SettingsCanvas.OnDragStop)
     SettingsCanvas:EnableDrag(true)
     SettingsCanvas:Show(shown)
-    addCreationButtons(50,50,settings)
+    addCreationButtons(50,50,settings, gear_sets)
 end
 
+-- функция замены значения на потивоположное от обращения
 function SETTINGS.Toggle()
     shown = not shown
     SettingsCanvas:Show(shown)
